@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JobFlow Console</title>
+
+    <style>
+        body {
+            font-family: -apple-system, Arial, sans-serif;
+            background: #0f1117;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .sub {
+            color: #9ca3af;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        section {
+            margin-bottom: 28px;
+        }
+
+        h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: #1a1d27;
+            border: 1px solid #2a2e3a;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .pending .value {
+            color: #fbbf24;
+        }
+
+        .processing .value {
+            color: #60a5fa;
+        }
+
+        .completed .value {
+            color: #34d399;
+        }
+
+        .failed .value,
+        .dead .value {
+            color: #f87171;
+        }
+
+        .total .value {
+            color: #e5e7eb;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            background: #0f1117;
+            border: 1px solid #2a2e3a;
+            color: #e5e7eb;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 14px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button.secondary {
+            background: #374151;
+        }
+
+        button.secondary:hover {
+            background: #4b5563;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1a1d27;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #2a2e3a;
+        }
+
+        th {
+            color: #9ca3af;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty {
+            color: #6b7280;
+            font-style: italic;
+            padding: 14px;
+        }
+
+        .refresh-note {
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .st-PENDING {
+            background: #3f3419;
+            color: #fbbf24;
+        }
+
+        .st-PROCESSING {
+            background: #1e3a5f;
+            color: #60a5fa;
+        }
+
+        .st-COMPLETED {
+            background: #1e3f2e;
+            color: #34d399;
+        }
+
+        .st-DEAD_LETTERED {
+            background: #3f1e1e;
+            color: #f87171;
+        }
+
+        .quick-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .quick-btns button {
+            margin-top: 0;
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        .result-box {
+            background: #0f1117;
+            border: 1px solid #2a2e3a;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 12px;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .job-id-pill {
+            background: #2563eb22;
+            color: #60a5fa;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>JobFlow Console</h1>
+
+<div class="sub">
+    Distributed Asynchronous Task Scheduler &amp; Job Queue Engine —
+    full test console, no Postman needed
+</div>
+
+
+<!-- =========================
+     LIVE STATS
+========================= -->
+
+<section>
+    <h2>Live Stats</h2>
+
+    <div class="stats-grid">
+
+        <div class="card stat-card pending">
+            <div class="label">Pending</div>
+            <div class="value" id="stat-pending">–</div>
+        </div>
+
+        <div class="card stat-card processing">
+            <div class="label">Processing</div>
+            <div class="value" id="stat-processing">–</div>
+        </div>
+
+        <div class="card stat-card completed">
+            <div class="label">Completed</div>
+            <div class="value" id="stat-completed">–</div>
+        </div>
+
+        <div class="card stat-card failed">
+            <div class="label">Failed</div>
+            <div class="value" id="stat-failed">–</div>
+        </div>
+
+        <div class="card stat-card dead">
+            <div class="label">Dead-Lettered</div>
+            <div class="value" id="stat-dead">–</div>
+        </div>
+
+        <div class="card stat-card total">
+            <div class="label">Total</div>
+            <div class="value" id="stat-total">–</div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- =========================
+     METRICS
+========================= -->
+
+<section>
+    <h2>Metrics</h2>
+
+    <div class="stats-grid">
+
+        <div class="card stat-card">
+            <div class="label">Avg Processing Time (s)</div>
+            <div class="value" id="metric-avg">–</div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="label">Throughput (last 60s)</div>
+            <div class="value" id="metric-throughput">–</div>
+        </div>
+
+        <div class="card stat-card">
+            <div class="label">Failure Rate (%)</div>
+            <div class="value" id="metric-failrate">–</div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- =========================
+     SUBMIT / CHECK JOB
+========================= -->
+
+<div class="grid-2">
+
+    <!-- Submit Job -->
+
+    <div class="card">
+
+        <h2 style="margin-top:0">
+            Submit a Job
+        </h2>
+
+        <label>Type</label>
+
+        <input
+                id="job-type"
+                value="email"
+        />
+
+
+        <label>Priority</label>
+
+        <select id="job-priority">
+
+            <option>HIGH</option>
+
+            <option selected>
+                MEDIUM
+            </option>
+
+            <option>LOW</option>
+
+        </select>
+
+
+        <label>Idempotency Key (optional)</label>
+
+        <input
+                id="job-idempotency"
+                placeholder="e.g. order-123"
+        />
+
+
+        <label>Payload (JSON)</label>
+
+        <textarea id="job-payload">{"to":"user@example.com"}</textarea>
+
+
+        <div class="quick-btns">
+
+            <span
+                    style="
+                    font-size:11px;
+                    color:#6b7280;
+                    align-self:center;
+                "
+            >
+                Quick fill:
+            </span>
+
+            <button
+                    class="secondary"
+                    onclick="setPayload('{}')"
+            >
+                Normal
+            </button>
+
+            <button
+                    class="secondary"
+                    onclick="setPayload('{&quot;simulateFailure&quot;:&quot;MALFORMED&quot;}')"
+            >
+                MALFORMED
+            </button>
+
+            <button
+                    class="secondary"
+                    onclick="setPayload('{&quot;simulateFailure&quot;:&quot;TRANSIENT&quot;}')"
+            >
+                TRANSIENT
+            </button>
+
+            <button
+                    class="secondary"
+                    onclick="setPayload('{&quot;simulateFailure&quot;:&quot;TIMEOUT&quot;}')"
+            >
+                TIMEOUT
+            </button>
+
+            <button
+                    class="secondary"
+                    onclick="setPayload('{&quot;simulateFailure&quot;:&quot;CRASH&quot;}')"
+            >
+                CRASH ⚠️
+            </button>
+
+        </div>
+
+
+        <button onclick="submitJob()">
+            Submit Job
+        </button>
+
+
+        <div
+                class="result-box"
+                id="submit-result"
+                style="display:none;"
+        ></div>
+
+    </div>
+
+
+    <!-- Check Job -->
+
+    <div class="card">
+
+        <h2 style="margin-top:0">
+            Check Job Status / Timeline
+        </h2>
+
+
+        <label>Job ID</label>
+
+        <input
+                id="check-job-id"
+                type="number"
+                placeholder="e.g. 12"
+        />
+
+
+        <button onclick="checkStatus()">
+            Get Status
+        </button>
+
+        <button
+                class="secondary"
+                onclick="checkTimeline()"
+        >
+            Get Timeline
+        </button>
+
+
+        <div
+                class="result-box"
+                id="check-result"
+                style="display:none;"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     LOAD TEST
+========================= -->
+
+<section>
+
+    <h2>Load Test</h2>
+
+    <div class="card">
+
+        <label>
+            Number of jobs to submit
+        </label>
+
+        <input
+                id="load-count"
+                type="number"
+                value="50"
+                min="1"
+        />
+
+
+        <label>
+            Job type mix
+        </label>
+
+        <select id="load-mix">
+
+            <option value="normal">
+                All normal jobs
+            </option>
+
+            <option value="mixed">
+                Mixed (normal + some failures)
+            </option>
+
+        </select>
+
+
+        <button
+                id="load-test-button"
+                onclick="runLoadTest()"
+        >
+            Run Load Test
+        </button>
+
+
+        <div
+                class="result-box"
+                id="load-result"
+                style="display:none;"
+        ></div>
+
+    </div>
+
+</section>
+
+
+<!-- =========================
+     DEAD LETTER QUEUE
+========================= -->
+
+<section>
+
+    <h2>Dead-Letter Queue</h2>
+
+    <table id="dlq-table">
+
+        <thead>
+
+        <tr>
+            <th>ID</th>
+            <th>Original Job</th>
+            <th>Type</th>
+            <th>Failure Reason</th>
+            <th>Failed At</th>
+            <th></th>
+        </tr>
+
+        </thead>
+
+        <tbody id="dlq-body"></tbody>
+
+    </table>
+
+</section>
+
+
+<div class="refresh-note">
+    Stats auto-refresh every 3 seconds.
+</div>
+
+
+<script>
+
+    /* ============================================================
+       NORMAL JOB SUBMISSION
+    ============================================================ */
+
+    function setPayload(json) {
+
+        document.getElementById('job-payload').value =
+            json === '{}'
+                ? '{"to":"user@example.com"}'
+                : json;
+    }
+
+
+    /* ============================================================
+       SUBMIT JOB
+    ============================================================ */
+
+    async function submitJob() {
+
+        const body = {
+
+            type:
+                document.getElementById('job-type').value,
+
+            payload:
+                document.getElementById('job-payload').value,
+
+            priority:
+                document.getElementById('job-priority').value
+
+        };
+
+
+        const key =
+            document
+                .getElementById('job-idempotency')
+                .value
+                .trim();
+
+
+        if (key) {
+            body.idempotencyKey = key;
+        }
+
+
+        const box =
+            document.getElementById('submit-result');
+
+
+        box.style.display = 'block';
+
+        box.textContent = 'Submitting...';
+
+
+        try {
+
+            const res = await fetch(
+                '/api/jobs',
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    body:
+                        JSON.stringify(body)
+                }
+            );
+
+
+            if (!res.ok) {
+
+                const errorText =
+                    await res.text();
+
+                throw new Error(
+                    `HTTP ${res.status}: ${errorText.substring(0, 200)}`
+                );
+            }
+
+
+            const data =
+                await res.json();
+
+
+            box.innerHTML =
+                `Job <span class="job-id-pill">#${data.id}</span> ` +
+                `submitted — status: ${data.status}\n\n` +
+                JSON.stringify(data, null, 2);
+
+
+            document
+                .getElementById('check-job-id')
+                .value = data.id;
+
+
+        } catch (e) {
+
+            box.textContent =
+                'Error: ' + e.message;
+
+        }
+    }
+
+
+    /* ============================================================
+       CHECK STATUS
+    ============================================================ */
+
+    async function checkStatus() {
+
+        const id =
+            document
+                .getElementById('check-job-id')
+                .value;
+
+
+        if (!id) {
+            return;
+        }
+
+
+        const box =
+            document.getElementById('check-result');
+
+
+        box.style.display = 'block';
+
+        box.textContent = 'Loading...';
+
+
+        try {
+
+            const res =
+                await fetch(`/api/jobs/${id}`);
+
+
+            if (!res.ok) {
+
+                const errorText =
+                    await res.text();
+
+                throw new Error(
+                    `HTTP ${res.status}: ${errorText.substring(0, 200)}`
+                );
+            }
+
+
+            const data =
+                await res.json();
+
+
+            box.textContent =
+                JSON.stringify(data, null, 2);
+
+
+        } catch (e) {
+
+            box.textContent =
+                'Error: ' + e.message;
+
+        }
+    }
+
+
+    /* ============================================================
+       CHECK TIMELINE
+    ============================================================ */
+
+    async function checkTimeline() {
+
+        const id =
+            document
+                .getElementById('check-job-id')
+                .value;
+
+
+        if (!id) {
+            return;
+        }
+
+
+        const box =
+            document.getElementById('check-result');
+
+
+        box.style.display = 'block';
+
+        box.textContent = 'Loading...';
+
+
+        try {
+
+            const res =
+                await fetch(`/api/jobs/${id}/timeline`);
+
+
+            if (!res.ok) {
+
+                const errorText =
+                    await res.text();
+
+                throw new Error(
+                    `HTTP ${res.status}: ${errorText.substring(0, 200)}`
+                );
+            }
+
+
+            const data =
+                await res.json();
+
+
+            if (data.length === 0) {
+
+                box.textContent =
+                    'No events yet.';
+
+                return;
+            }
+
+
+            box.textContent =
+                data
+                    .map(
+                        e =>
+                            `[${new Date(e.createdAt).toLocaleTimeString()}] ` +
+                            `${e.eventType} — ${e.detail}`
+                    )
+                    .join('\n');
+
+
+        } catch (e) {
+
+            box.textContent =
+                'Error: ' + e.message;
+
+        }
+    }
+
+
+    /* ============================================================
+       RETRY DEAD LETTER JOB
+    ============================================================ */
+
+    async function retryJob(id) {
+
+        try {
+
+            const res =
+                await fetch(
+                    `/api/dead-letter/${id}/retry`,
+                    {
+                        method: 'POST'
+                    }
+                );
+
+
+            if (!res.ok) {
+
+                const errorText =
+                    await res.text();
+
+                throw new Error(
+                    `HTTP ${res.status}: ${errorText.substring(0, 200)}`
+                );
+            }
+
+
+            refresh();
+
+
+        } catch (e) {
+
+            console.error(
+                'Retry failed:',
+                e
+            );
+
+        }
+    }
+
+
+    /* ============================================================
+       LOAD TEST
+    ============================================================ */
+
+    async function runLoadTest() {
+
+        const count =
+            parseInt(
+                document
+                    .getElementById('load-count')
+                    .value,
+                10
+            ) || 50;
+
+
+        const mixed =
+            document
+                .getElementById('load-mix')
+                .value === 'mixed';
+
+
+        const box =
+            document.getElementById('load-result');
+
+
+        const button =
+            document.getElementById('load-test-button');
+
+
+        if (count < 1) {
+
+            box.style.display = 'block';
+
+            box.textContent =
+                'Please enter a number greater than 0.';
+
+            return;
+        }
+
+
+        box.style.display = 'block';
+
+        box.textContent =
+            `Submitting ${count} jobs...`;
+
+
+        button.disabled = true;
+
+        button.textContent =
+            'Running...';
+
+
+        const startSubmit =
+            performance.now();
+
+
+        const submittedIds = [];
+
+
+        try {
+
+            /* ---------------------------------------------
+               SUBMIT JOBS
+            --------------------------------------------- */
+
+            for (
+                let i = 0;
+                i < count;
+                i++
+            ) {
+
+                let payload =
+                    `{"to":"user${i}@example.com"}`;
+
+
+                if (
+                    mixed &&
+                    i % 10 === 0
+                ) {
+
+                    payload =
+                        '{"simulateFailure":"TRANSIENT"}';
+                }
+
+
+                if (
+                    mixed &&
+                    i % 17 === 0
+                ) {
+
+                    payload =
+                        '{"simulateFailure":"MALFORMED"}';
+                }
+
+
+                const res =
+                    await fetch(
+                        '/api/jobs',
+                        {
+                            method: 'POST',
+
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    {
+                                        type:
+                                            'load-test',
+
+                                        payload:
+                                            payload,
+
+                                        priority:
+                                            'MEDIUM'
+                                    }
+                                )
+                        }
+                    );
+
+
+                if (!res.ok) {
+
+                    const errorText =
+                        await res.text();
+
+
+                    throw new Error(
+                        `Job ${i + 1}/${count} failed. ` +
+                        `HTTP ${res.status}: ` +
+                        `${errorText.substring(0, 200)}`
+                    );
+                }
+
+
+                const data =
+                    await res.json();
+
+
+                if (
+                    data.id === undefined ||
+                    data.id === null
+                ) {
+
+                    throw new Error(
+                        `Job ${i + 1}/${count} was submitted ` +
+                        `but the response did not contain a job ID.`
+                    );
+                }
+
+
+                submittedIds.push(data.id);
+
+
+                box.textContent =
+                    `Submitting ${count} jobs...\n\n` +
+                    `Submitted: ${i + 1}/${count}`;
+            }
+
+
+            /* ---------------------------------------------
+               SUBMISSION COMPLETE
+            --------------------------------------------- */
+
+            const submitDuration =
+                (
+                    (performance.now() - startSubmit) /
+                    1000
+                ).toFixed(2);
+
+
+            box.textContent =
+                `Submitted ${count} jobs in ${submitDuration}s.\n` +
+                `Waiting for processing to finish...`;
+
+
+            const startProcess =
+                performance.now();
+
+
+            let allDone = false;
+
+
+            /* ---------------------------------------------
+               WAIT FOR ALL JOBS
+            --------------------------------------------- */
+
+            while (!allDone) {
+
+                await new Promise(
+                    resolve =>
+                        setTimeout(resolve, 2000)
+                );
+
+
+                const results =
+                    await Promise.all(
+
+                        submittedIds.map(
+                            async id => {
+
+                                const response =
+                                    await fetch(
+                                        `/api/jobs/${id}`
+                                    );
+
+
+                                if (!response.ok) {
+
+                                    const errorText =
+                                        await response.text();
+
+
+                                    throw new Error(
+                                        `Status check failed for ` +
+                                        `job ${id}. ` +
+                                        `HTTP ${response.status}: ` +
+                                        `${errorText.substring(0, 200)}`
+                                    );
+                                }
+
+
+                                return response.json();
+                            }
+                        )
+
+                    );
+
+
+                const stillGoing =
+                    results.filter(
+                        job =>
+                            job.status === 'PENDING' ||
+                            job.status === 'PROCESSING'
+                    );
+
+
+                allDone =
+                    stillGoing.length === 0;
+
+
+                if (!allDone) {
+
+                    const finished =
+                        count -
+                        stillGoing.length;
+
+
+                    box.textContent =
+                        `Submitted ${count} jobs in ${submitDuration}s.\n\n` +
+                        `${finished}/${count} finished so far...`;
+                }
+
+
+                /* -----------------------------------------
+                   ALL JOBS FINISHED
+                ----------------------------------------- */
+
+                if (allDone) {
+
+                    const completed =
+                        results.filter(
+                            job =>
+                                job.status === 'COMPLETED'
+                        ).length;
+
+
+                    const deadLettered =
+                        results.filter(
+                            job =>
+                                job.status === 'DEAD_LETTERED'
+                        ).length;
+
+
+                    const failed =
+                        results.filter(
+                            job =>
+                                job.status === 'FAILED'
+                        ).length;
+
+
+                    const processDuration =
+                        (
+                            (performance.now() -
+                                startProcess) /
+                            1000
+                        ).toFixed(2);
+
+
+                    const totalDuration =
+                        (
+                            (performance.now() -
+                                startSubmit) /
+                            1000
+                        ).toFixed(2);
+
+
+                    const totalSeconds =
+                        Number(totalDuration);
+
+
+                    const throughput =
+                        totalSeconds > 0
+                            ? (
+                                count /
+                                totalSeconds
+                            ).toFixed(2)
+                            : '0.00';
+
+
+                    const failureRate =
+                        (
+                            (
+                                deadLettered +
+                                failed
+                            ) /
+                            count
+                        ) *
+                        100;
+
+
+                    box.textContent =
+    `Load test complete.
+
+    Jobs submitted:      ${count}
+    Submit time:         ${submitDuration}s
+    Processing time:     ${processDuration}s
+    Total wall time:     ${totalDuration}s
+
+    Throughput:          ${throughput} jobs/sec (end-to-end)
+
+    Completed:           ${completed}
+    Failed:              ${failed}
+    Dead-lettered:       ${deadLettered}
+    Failure rate:        ${failureRate.toFixed(1)}%`;
+
+
+                    refresh();
+                }
+            }
+
+
+        } catch (e) {
+
+            box.textContent =
+    `LOAD TEST FAILED
+
+    ${e.message}
+
+    Jobs successfully submitted before failure:
+    ${submittedIds.length}/${count}`;
+
+
+            console.error(
+                'Load test failed:',
+                e
+            );
+
+        } finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                'Run Load Test';
+
+        }
+    }
+
+
+    /* ============================================================
+       DASHBOARD REFRESH
+    ============================================================ */
+
+    async function refresh() {
+
+        try {
+
+            /* ---------------------------------------------
+               STATS
+            --------------------------------------------- */
+
+            const statsResponse =
+                await fetch(
+                    '/api/dashboard/stats'
+                );
+
+
+            if (!statsResponse.ok) {
+
+                throw new Error(
+                    `Stats API returned HTTP ${statsResponse.status}`
+                );
+            }
+
+
+            const stats =
+                await statsResponse.json();
+
+
+            document
+                .getElementById('stat-pending')
+                .textContent =
+                    stats.pending;
+
+
+            document
+                .getElementById('stat-processing')
+                .textContent =
+                    stats.processing;
+
+
+            document
+                .getElementById('stat-completed')
+                .textContent =
+                    stats.completed;
+
+
+            document
+                .getElementById('stat-failed')
+                .textContent =
+                    stats.failed;
+
+
+            document
+                .getElementById('stat-dead')
+                .textContent =
+                    stats.deadLettered;
+
+
+            document
+                .getElementById('stat-total')
+                .textContent =
+                    stats.total;
+
+
+            /* ---------------------------------------------
+               METRICS
+            --------------------------------------------- */
+
+            const metricsResponse =
+                await fetch(
+                    '/api/dashboard/metrics'
+                );
+
+
+            if (!metricsResponse.ok) {
+
+                throw new Error(
+                    `Metrics API returned HTTP ${metricsResponse.status}`
+                );
+            }
+
+
+            const metrics =
+                await metricsResponse.json();
+
+
+            document
+                .getElementById('metric-avg')
+                .textContent =
+                    Number(
+                        metrics.avgProcessingTimeSeconds
+                    ).toFixed(2);
+
+
+            document
+                .getElementById('metric-throughput')
+                .textContent =
+                    metrics.throughputPerMinute;
+
+
+            document
+                .getElementById('metric-failrate')
+                .textContent =
+                    Number(
+                        metrics.failureRatePercent
+                    ).toFixed(1);
+
+
+            /* ---------------------------------------------
+               DEAD LETTER QUEUE
+            --------------------------------------------- */
+
+            const dlqResponse =
+                await fetch(
+                    '/api/dead-letter'
+                );
+
+
+            if (!dlqResponse.ok) {
+
+                throw new Error(
+                    `Dead-letter API returned HTTP ${dlqResponse.status}`
+                );
+            }
+
+
+            const dlq =
+                await dlqResponse.json();
+
+
+            const body =
+                document.getElementById(
+                    'dlq-body'
+                );
+
+
+            if (dlq.length === 0) {
+
+                body.innerHTML =
+                    '<tr>' +
+                    '<td colspan="6" class="empty">' +
+                    'No dead-lettered jobs' +
+                    '</td>' +
+                    '</tr>';
+
+            } else {
+
+                body.innerHTML =
+                    dlq.map(
+                        job => `
+
+                        <tr>
+
+                            <td>
+                                ${job.id}
+                            </td>
+
+                            <td>
+                                ${job.originalJobId}
+                            </td>
+
+                            <td>
+                                ${job.type}
+                            </td>
+
+                            <td>
+                                ${job.failureReason ?? ''}
+                            </td>
+
+                            <td>
+                                ${new Date(
+                                    job.failedAt
+                                ).toLocaleTimeString()}
+                            </td>
+
+                            <td>
+
+                                <button
+                                    class="secondary"
+                                    style="
+                                        margin-top:0;
+                                        padding:4px 8px;
+                                        font-size:11px;
+                                    "
+                                    onclick="retryJob(${job.id})"
+                                >
+                                    Retry
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    `
+                    ).join('');
+            }
+
+
+        } catch (e) {
+
+            console.error(
+                'Dashboard refresh failed:',
+                e
+            );
+        }
+    }
+
+
+    /* ============================================================
+       INITIAL LOAD
+    ============================================================ */
+
+    refresh();
+
+    setInterval(
+        refresh,
+        3000
+    );
+
+</script>
+
+</body>
+</html>
